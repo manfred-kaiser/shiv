@@ -4,6 +4,7 @@ import os
 import runpy
 import shutil
 import site
+import stat
 import subprocess
 import sys
 import zipfile
@@ -188,9 +189,22 @@ def bootstrap():  # pragma: no cover
 
         # create an environment object (a combination of env vars and json metadata)
         env = Environment.from_json(archive.read("environment.json").decode())
+    
+    # create user owned directory or check permissions, if "SHIV_ROOR" is used
+    envroot = env.root
+    if sys.platform.startswith('linux') and envroot:
+        envroot = os.path.join(env.root, str(os.getuid()))
+        if os.path.isdir(envroot):
+            if oct(os.stat(envroot)[stat.ST_MODE])[-3:] != '700':
+                sys.exit(255)
+            if os.stat(envroot).st_uid != os.getuid():
+                sys.exit(255)
+        else:
+            os.makedirs(envroot, exist_ok=True)
+            os.chmod(envroot, 0o700)
 
         # get a site-packages directory (from env var or via build id)
-        site_packages = cache_path(archive, env.root, env.build_id) / "site-packages"
+        site_packages = cache_path(archive, envroot, env.build_id) / "site-packages"
 
         # determine if first run or forcing extract
         if not site_packages.exists() or env.force_extract:
