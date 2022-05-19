@@ -8,6 +8,9 @@
 ![snake](https://github.com/linkedin/shiv/raw/main/logo.png)
 
 # shiv
+
+**Python SHIV-version, which creates user owned directires if SHIV_ROOT is used.**
+
 shiv is a command line utility for building fully self-contained Python zipapps as outlined in [PEP 441](https://www.python.org/dev/peps/pep-0441/), but with all their dependencies included!
 
 shiv's primary goal is making distributing Python applications fast & easy.
