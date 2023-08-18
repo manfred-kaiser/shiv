@@ -205,6 +205,16 @@ def bootstrap():  # pragma: no cover
 
         # get a site-packages directory (from env var or via build id)
         site_packages = cache_path(archive, envroot, env.build_id) / "site-packages"
+        
+        shiv_base_dir = site_packages.parent.parent
+        lockfile_name = str(archive.filename[2:])
+
+        for x in shiv_base_dir.iterdir():
+            if env.build_id not in str(x) and lockfile_name in str(x):
+                if not os.path.isfile(str(x)):
+                    shutil.rmtree(str(x), ignore_errors=True)
+                else:
+                    os.remove(str(x))
 
         # determine if first run or forcing extract
         if not site_packages.exists() or env.force_extract:
