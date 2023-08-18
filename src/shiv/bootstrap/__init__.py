@@ -189,33 +189,37 @@ def bootstrap():  # pragma: no cover
 
         # create an environment object (a combination of env vars and json metadata)
         env = Environment.from_json(archive.read("environment.json").decode())
-    
-        # create user owned directory or check permissions, if "SHIV_ROOR" is used
+
+        # create user owned directory or check permissions, if "SHIV_ROOT" is used
         envroot = env.root
-        if sys.platform.startswith('linux') and envroot:
+        if sys.platform.startswith('linux') and envroot and not os.environ.get('SHIV_NO_USRDIRS'):
             envroot = os.path.join(env.root, str(os.getuid()))
             if os.path.isdir(envroot):
                 if oct(os.stat(envroot)[stat.ST_MODE])[-3:] != '700':
                     sys.exit(255)
                 if os.stat(envroot).st_uid != os.getuid():
                     sys.exit(255)
+
             else:
                 os.makedirs(envroot, exist_ok=True)
                 os.chmod(envroot, 0o700)
 
         # get a site-packages directory (from env var or via build id)
         site_packages = cache_path(archive, envroot, env.build_id) / "site-packages"
-        
-        shiv_base_dir = site_packages.parent.parent
-        lockfile_name = str(archive.filename[2:])
 
-        if os.environ.get('PRESERVE_OLD') == None:
-            for x in shiv_base_dir.iterdir():
-                if env.build_id not in str(x) and lockfile_name in str(x):
-                    if not os.path.isfile(str(x)):
-                        shutil.rmtree(str(x), ignore_errors=True)
-                    else:
-                        os.remove(str(x))
+        shiv_base_dir = site_packages.parent.parent
+        app_name = Path(archive.filename).resolve().name
+
+        if not os.environ.get('PRESERVE_OLD'):
+            for dir_entry in shiv_base_dir.iterdir():
+                if app_name not in str(dir_entry):
+                    continue
+                if env.build_id in str(dir_entry):
+                    continue
+                if dir_entry.is_dir():
+                    shutil.rmtree(dir_entry, ignore_errors=True)
+                else:
+                    dir_entry.unlink()
 
         # determine if first run or forcing extract
         if not site_packages.exists() or env.force_extract:
